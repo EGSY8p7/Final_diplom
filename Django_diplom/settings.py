@@ -25,7 +25,7 @@ SECRET_KEY = 'i9z_7lo+&euzdrm1ii2g23o+jy(t_-&m5wwt6#nxsx1oxm9mma'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'diploma.pythonanywhere.com']
+ALLOWED_HOSTS = ['egsy8p7.pythonanywhere.com','127.0.0.1']
 
 
 # Application definition
