@@ -4,101 +4,73 @@ import sys
 import os
 import sqlite3
 import requests
-import pickle
 import json
+import urllib
 import pandas as pd
-import django
-
-#sys.path.append(os.path.realpath(os.path.dirname(__file__), 'Django_diplom/airquality/'))
-#sys.path.append(os.path.realpath(os.path.dirname(__file__), 'Django_diplom/'))
-
-#os.environ['DJANGO_SETTINGS_MODULE'] ='settings'
-#django.setup()
-
-#from django.core.exceptions import ObjectDoesNotExist
-#from Django_diplom.airquality.models import *
-
-def main(argv):
-
-    city = 'astana'
-    accesstoken = '153147500b88026a9bc053bdf5c2b382cb90e806'
-    notify = 'False'
-    sendTrayNotification = False
 
 
-    url = 'http://api.waqi.info/feed/'+city+'/?token=' + accesstoken
-    print('URL: ',url)
+def get_aqi_data(city, token):
+    aqi_data_url = 'http://api.waqi.info/feed/' + city + '/?token=' + token
+    try:
+        api_request = urllib.request.Request(aqi_data_url)
+        api_response = urllib.request.urlopen(api_request)
 
-    r = requests.get(url, auth=('user', 'pass'))
+        try:
+            return json.loads(api_response.read())
+        except (EOFError, KeyError, TypeError):
+            return "JSON error"
 
-    if r.status_code == 200:
-        import json
-        data = r.json()
-        with open('aqi.json', 'w') as outfile:
-            json.dump(data, outfile)
-
-        value = data['data']['iaqi']['pm25']['v']
-        toDisplay = str(value)
+    except IOError as e:
+        if hasattr(e, 'code'):
+            return e.code
+        elif hasattr(e, 'reason'):
+            return e.reason
 
 
-        if value > 0 and value < 50:
-            notify = 'notify-send "Air Quality Alert:" "Current Value: Healthy - "' + toDisplay
-            print("Air Quality Alert:" "Current Value: Healthy - " + toDisplay)
+city = 'astana'
+token = '153147500b88026a9bc053bdf5c2b382cb90e806'
+url = 'http://api.waqi.info/feed/' + city + '/?token=' + token
+page_data = get_aqi_data(city, token)
 
-        elif value > 50 and value < 100:
-            notify = 'notify-send "Air Quality Alert:" "Current Value: Moderate - "' + toDisplay
-            print("Air Quality Alert:" "Current Value: Moderate - " + toDisplay)
+print('URL:', page_data)
 
-        elif value > 100 and value < 150:
-            notify = 'notify-send "Air Quality Alert:" "Current Value: Sensitive - "' + toDisplay
-            print("Air Quality Alert:" "Current Value: Sensitive - " + toDisplay)
+alert = ''
+value = page_data['data']['iaqi']['pm25']['v']
 
-        elif value > 150 and value < 200:
-            notify = 'notify-send "Air Quality Alert:" "Current Value: UnHealhty - "' + toDisplay
-            print ("Air Quality Alert:" "Current Value: UnHealhty - " + toDisplay)
+# alert if hazardous
+if 0 < value <= 50:
+        print('Загрязнение воздуха - низкое')
+elif 50 < value <= 100:
+        print('Загрязнение воздуха - ниже среднего')
+elif 100 < value <= 150:
+        print('Загрязнение воздуха - среднее')
+elif 150 < value <= 200:
+        print('Загрязнение воздуха - выше среднего')
+elif 200 < value <= 250:
+        print('Загрязнение воздуха - высокое')
+elif 250 < value <= 300:
+        print('Загрязнение воздуха - опасное')
+else:
+        print('Нет данных')
 
-        elif value > 200 and value < 250:
-            notify = 'notify-send "Air Quality Alert:" "Current Very Unhealhty - "' + toDisplay
-            print ("Air Quality Alert:" "Current Very Unhealhty - " + toDisplay)
 
-        elif value > 250 and value > 300:
-            notify = 'notify-send "Air Quality Alert:" "Current Value: Hazardous -  "' + toDisplay
-            print ("Air Quality Alert:" "Current Value: Hazardous -  " + toDisplay)
+# create DB
+database = sqlite3.connect('Astana.db')
+cur = database.cursor()
+cur.execute('''CREATE TABLE IF NOT EXISTS AirData
+              (Number INT, DateT Datetime, PM25 INT)''')
 
-    else:
-        notify = 'notify-send "Error: " "Unable to Connect"'
-        print ('Error: Unable to connect to server')
+for i in range(1):
+    Number = i
+    DateT = page_data['data']['time']['s']
+    PM25 = page_data['data']['iaqi']['pm25']['v']
 
-    if sendTrayNotification:
-        os.system(notify)
-    else:
-        print ('[Debug] Tray Notification is off.')
+    print('Number', Number, 'Date', DateT, 'PM25', PM25)
+    for ins in [(Number, DateT, PM25),
+                ]:
+        cur.execute('INSERT INTO AirData(Number, DateT, PM25) VALUES (?,?,?)', ins)
 
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+database.commit()
+cur.close()
+database.close()
 
-class Object(object):
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
-with open('aqi.json', encoding='utf-8') as data_file:
-    datat = json.loads(data_file.read())
-with open('saveobj.pkl', 'wb') as output:
-    data1 = Object('Date', datat['data']['time']['s'])
-    pickle.dump(data1, output, pickle.HIGHEST_PROTOCOL)
-    data2 = Object('Pm25', datat['data']['iaqi']['pm25']['v'])
-    pickle.dump(data2, output, pickle.HIGHEST_PROTOCOL)
-del data1
-del data2
-with open('saveobj.pkl', 'rb') as input:
-    data1 = pickle.load(input)
-    data2 = pickle.load(input)
-coll = (2, data1.value, data2.value)
-con = sqlite3.connect('db.sqlite3')
-with con:
-    cur = con.cursor()
-    cur.execute("DROP TABLE IF EXISTS AirData")
-    cur.execute("CREATE TABLE  AirData(Id INT, Date DATE, Pm25 INT)")
-    cur.execute("INSERT INTO AirData VALUES (?, ?, ?)", coll)
-table = pd.read_sql_query("SELECT * FROM AirData", con)
-table.head()
