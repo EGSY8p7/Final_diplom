@@ -54,21 +54,19 @@
     </nav>
     <div id="content" class="container">
         <br><br><br>
-        {% block content %}
-            {% if d %}
-                <table>
-                    {% for k in d %}
-                        {% for item_1, item_2 in k.items %}
-                            <tr>
-                                <td> {{ item_1 }}</td>
-                                <td> {{ item_2 }}</td>
-                            </tr>
-                        {%  endfor %}
-                    {% endfor %}
-                </table>
-            {% endif %}
-
-        {% endblock %}
+    {% block body %}
+        <table border="1">
+            <caption>Таблица уровня загрязнения г. Астана</caption>
+            <tr>
+                <th>№</th>
+                <th>Дата и время</th>
+                <th>Уровень PM2.5</th>
+            </tr>
+            {% for x in data %}
+            <tr><td>{{ x.number }}</td><td>{{ x.datet }}</td><td>{{ x.pm25 }}</td></tr>
+            {% endfor %}
+        </table>
+    {% endblock %}
     </div>
     <div class="footer bg-dark">
     </div>
