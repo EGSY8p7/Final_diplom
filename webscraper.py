@@ -55,7 +55,7 @@ else:
 
 
 # create DB
-database = sqlite3.connect('Astana.db')
+database = sqlite3.connect('Astana.sqlite3')
 cur = database.cursor()
 cur.execute('''CREATE TABLE IF NOT EXISTS AirData
               (Number INT, DateT Datetime, PM25 INT)''')
